@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ja">
+    <head>
+        <meta charset="utf-8">
+        <title>迷路生成</title>
+    </head>
+    <body>
+        <div class="setting">
+            縦: <input id="number-column" type="number" value="9" step="2">
+            横: <input id="number-row" type="number" value="9" step="2">
+            <input id="create" type="button" value="作成">
+        </div>
+    
+        <table class="maze">
+            <tbody>
+            </tbody>
+        </table>
+    </body>
+    <style>
+        *{
+            margin:0;
+        }
+
+        table{
+            border-collapse:collapse;
+            width:auto;
+        }
+
+        td{
+            height:15px;
+            width:15px;
+            max-height:15px;
+            min-height:15px;
+            max-width:15px;
+            min-width:15px;
+            background-color:rgb(238, 238, 238);
+            border:solid 1px rgb(39, 39, 39);
+            padding:0;
+            font-size:10px;
+            vertical-align:center;
+            text-align:center;
+        }
+    </style>
+    <script>
+        function change_cellColor(column, row, color){
+        }
+
+        function change_cell(command){
+            for(let i = 0; i < command.length; i++){
+                if(command[i][0] == "color"){
+                    document.getElementById("cell" + String(command[i][1]) + "_" + String(command[i][2])).style.backgroundColor = command[i][3];
+                }else if(command[i][0] == "write"){
+                    document.getElementById("cell" + String(command[i][1]) + "_" + String(command[i][2])).innerHTML = command[i][3];
+                }
+            }
+        }
+
+        function create_maze(height, width){
+            for(let i = 0; i < height; i++){
+                for(let j = 0; j < width; j++){
+                    change_cellColor(i,j,"rgb(238,238,238)");
+                }
+            }
+            
+            let step = [];
+            let maze = [];
+            let action;
+
+            for(let i = 0; i < height; i++){
+                let row = [];
+                for(let j = 0; j < width; j++){
+                    action = [];
+                    if(i == 1 && j == 1){
+                        action.push(["write",i,j,"S"]);
+                        row.push(3)
+                    }else if(i == height - 2 && j == width - 2){
+                        action.push(["write",i,j,"G"]);
+                        row.push(4);
+                    }else if(i == 0 || j == 0 || i == height - 1 || j == width - 1){
+                        action.push(["color",i,j,"rgb(39,39,39)"]);
+                        row.push(2);
+                    }else if(i % 2 == 0 && j % 2 == 0){
+                        action.push(["color",i,j,"rgb(39,39,39)"]);
+                        row.push(1);
+                    }else{
+                        row.push(0)
+                    };
+                    if(action.length >= 1){
+                        step.push(action);
+                    }
+                }
+                maze.push(row);
+            }
+
+            for(let i = 2; i < height - 1; i += 2){
+                for(let j = 2; j < width - 1; j += 2){
+                    let directions = [];
+                    action = [];
+                    action.push(["color",i,j,"rgb(220,100,100)"])
+                    if(i == 2){
+                        directions.push([i - 1, j]);
+                        action.push(["color",i-1,j,"rgb(94,197,116)"]);
+                    }
+                    if(maze[i+1][j] == 0){
+                        directions.push([i + 1, j]);
+                        action.push(["color",i+1,j,"rgb(94,197,116)"]);
+                    }
+                    if(maze[i][j-1] == 0){
+                        directions.push([i, j - 1]);
+                        action.push(["color",i,j-1,"rgb(94,197,116)"]);
+                    }
+                    if(maze[i][j+1] == 0){
+                        directions.push([i, j + 1]);
+                        action.push(["color",i,j+1,"rgb(94,197,116)"]);
+                    }
+
+                    step.push(action);
+                    step.push(action);
+                    step.push(action);
+                    step.push(action);
+                    step.push(action);
+                    action = [];
+
+                    let index = Math.floor(Math.random() * directions.length);
+                    action.push(["color",i,j,"rgb(39,39,39)"])
+                    for(let k = 0; k < directions.length; k++){
+                        if(k == index){
+                            action.push(["color",directions[k][0],directions[k][1],"rgb(39,39,39)"]);
+                        }else{
+                            action.push(["color",directions[k][0],directions[k][1],"rgb(238,238,238)"]);
+                        }
+                    }
+
+                    step.push(action);
+                    step.push(action);
+                    step.push(action);
+                    let wall = directions[index];
+                    maze[wall[0]][wall[1]] = 1;
+                }
+            }
+
+            for(let i = 0; i < step.length; i++){
+                (function(index){
+                    setTimeout(function(){
+                        change_cell(step[i]);
+                    }, i * 30);
+                })(i);
+            }
+            
+            for(let i = 0; i < step.length; i++){
+                
+            }
+        }
+
+        function create_field(column, row){
+            const table = document.querySelector(".maze");
+            const tbody = table.querySelector("tbody");
+            tbody.innerHTML = "";
+
+            for(let i = 0; i < column; i++){
+                const tr = document.createElement("tr");
+                for(let j = 0; j < row; j++){
+                    const td = document.createElement("td");
+                    td.id = "cell" + String(i) + "_" + String(j);
+                    tr.appendChild(td);
+                }
+                tbody.appendChild(tr);
+            }
+            table.appendChild(tbody);
+        }
+
+        function number_change(){
+            let column = document.getElementById("number-column").value;
+            let row    = document.getElementById("number-row").value;
+            create_field(column,row);
+        }
+
+        document.getElementById("number-column").addEventListener("change" , () => {
+            number_change();
+        });
+
+        document.getElementById("number-row").addEventListener("change" , () => {
+            number_change();
+        });
+
+        document.getElementById("create").addEventListener("click", () => {
+            let column = document.getElementById("number-column").value;
+            let row    = document.getElementById("number-row").value;
+            create_maze(column,row);
+        });
+
+        number_change();
+    </script>
+</html>
