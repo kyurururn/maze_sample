@@ -9,6 +9,9 @@
             縦: <input id="number-column" type="number" value="9" step="2">
             横: <input id="number-row" type="number" value="9" step="2">
             <input id="create" type="button" value="作成">
+            <input id="solve" type="button" value="解く">
+            <br>
+            速度: <input id="speed" type="range" min="0" max="100">
         </div>
     
         <table class="maze">
@@ -42,8 +45,9 @@
         }
     </style>
     <script>
-        function change_cellColor(column, row, color){
-        }
+        let maze = [];
+        let height, width;
+        let step = [];
 
         function change_cell(command){
             for(let i = 0; i < command.length; i++){
@@ -55,16 +59,30 @@
             }
         }
 
-        function create_maze(height, width){
+        function getSliderValue(){
+            return 100 - document.getElementById("speed").value;
+        }
+
+        async function executeSteps(){
+            while(step.length > 0){
+                await new Promise(resolve => setTimeout(() => {
+                    const s = step.shift();
+                    change_cell(s);
+                    resolve();
+                }, getSliderValue()));
+            }
+        }
+
+
+        function create_maze(){
             for(let i = 0; i < height; i++){
                 for(let j = 0; j < width; j++){
-                    change_cellColor(i,j,"rgb(238,238,238)");
+                    change_cell(["color",i,j,"rgb(238, 238, 238)"])
                 }
             }
             
-            let step = [];
-            let maze = [];
             let action;
+            maze = [];
 
             for(let i = 0; i < height; i++){
                 let row = [];
@@ -96,7 +114,7 @@
                 for(let j = 2; j < width - 1; j += 2){
                     let directions = [];
                     action = [];
-                    action.push(["color",i,j,"rgb(220,100,100)"])
+                    step.push([["color",i,j,"rgb(220,100,100)"]])
                     if(i == 2){
                         directions.push([i - 1, j]);
                         action.push(["color",i-1,j,"rgb(94,197,116)"]);
@@ -139,27 +157,98 @@
                 }
             }
 
+            executeSteps();
+
+            /*
             for(let i = 0; i < step.length; i++){
                 (function(index){
                     setTimeout(function(){
                         change_cell(step[i]);
-                    }, i * 30);
+                    }, i * 50);
                 })(i);
             }
-            
-            for(let i = 0; i < step.length; i++){
-                
-            }
+            */
         }
 
-        function create_field(column, row){
+        const d = [[0,-1],[0,1],[-1,0],[1,0]];
+
+        function search(maze_search, pos, depth){
+            for(let i = 0; i < 4; i++){
+                let next = [pos[0] + d[i][0], pos[1] + d[i][1]];
+                maze_condition = maze[next[0]][next[1]];
+                if(maze_condition == 4){
+                    maze_search[next[0]][next[1]] = depth + 1;
+                    return [true, [d[i]]];
+                }
+                if(maze_condition == 0 && depth < maze_search[next[0]][next[1]]){
+                    step.push([["color",next[0],next[1],"red"]]);
+                    maze_search[next[0]][next[1]] = depth + 1;
+                    let result = search(maze_search, [next[0], next[1]], depth+1);
+                    if(result[0]){
+                        path = result[1];
+                        path.unshift(d[i]);
+                        return [true, path];
+                    }
+                }
+            }
+            return [false, []];
+        }
+
+        function solve_maze(){
+            let maze_search = [];
+            step.push([["color",1,1,"red"]]);
+
+            for(let i = 0; i < height; i++){
+                let row = [];
+                for(let j = 0; j < width; j++){
+                    row.push(100000);
+                }
+                maze_search.push(row);
+            }
+
+            let result = search(maze_search, [1,1], 1);
+            let condition = result[0];
+            let move = result[1];
+
+            step.push([["color",width - 2,height - 2,"red"]]);
+
+            if(!condition) return "cannot_goal";
+
+            step.push([["color",1,1,"yellow"]]);
+
+            pos = [1,1]
+            path = [[1,1]]
+            for(let i = 0; i < move.length; i++){
+                pos[0] += move[i][0];
+                pos[1] += move[i][1];
+                path.push([pos[0],pos[1]]);
+                step.push([["color",pos[0],pos[1],"yellow"]]);
+            }
+
+
+            executeSteps(step)
+            /*
+            for(let i = 0; i < actions.length; i++){
+                (function(index){
+                    setTimeout(function(){
+                        change_cell(actions[i]);
+                    }, i * 50);
+                })(i);
+            }
+            */
+
+            return path;
+        }
+
+
+        function create_field(){
             const table = document.querySelector(".maze");
             const tbody = table.querySelector("tbody");
             tbody.innerHTML = "";
 
-            for(let i = 0; i < column; i++){
+            for(let i = 0; i < height; i++){
                 const tr = document.createElement("tr");
-                for(let j = 0; j < row; j++){
+                for(let j = 0; j < width; j++){
                     const td = document.createElement("td");
                     td.id = "cell" + String(i) + "_" + String(j);
                     tr.appendChild(td);
@@ -170,9 +259,9 @@
         }
 
         function number_change(){
-            let column = document.getElementById("number-column").value;
-            let row    = document.getElementById("number-row").value;
-            create_field(column,row);
+            height = document.getElementById("number-column").value;
+            width  = document.getElementById("number-row").value;
+            create_field(height,width);
         }
 
         document.getElementById("number-column").addEventListener("change" , () => {
@@ -184,10 +273,15 @@
         });
 
         document.getElementById("create").addEventListener("click", () => {
-            let column = document.getElementById("number-column").value;
-            let row    = document.getElementById("number-row").value;
-            create_maze(column,row);
+            create_field()
+            height = document.getElementById("number-column").value;
+            width  = document.getElementById("number-row").value;
+            create_maze();
         });
+
+        document.getElementById("solve").addEventListener("click", () => {
+            solve_maze();
+        })
 
         number_change();
     </script>
